@@ -45,7 +45,7 @@ class Colorbash < Formula
 
   def install
     bin.install "colorbash", "cb"
-    pkgshare.install "README.md", "LICENSE", "LICENSING.md", "VERSION"
+    pkgshare.install "README.md", "LICENSE", "LICENSING.md", "VERSION", "colorbash-init.sh"
   end
 
   def caveats

@@ -423,22 +423,25 @@ cmd_list() {
 }
 
 cmd_init() {
-  local script_path quoted_path
+  local script_path script_dir init_path quoted_path quoted_init_path
   script_path="$(resolve_script_path)"
+  script_dir="$(cd "$(dirname "$script_path")" && pwd)"
+  init_path="$script_dir/colorbash-init.sh"
+
+  if [ ! -f "$init_path" ]; then
+    init_path="$script_dir/../share/colorbash/colorbash-init.sh"
+  fi
+
+  if [ ! -f "$init_path" ]; then
+    die "Could not find colorbash-init.sh near $script_path"
+  fi
+
   quoted_path="$(shell_quote "$script_path")"
+  quoted_init_path="$(shell_quote "$init_path")"
 
   cat <<EOF
-cb() {
-  $quoted_path "\$@"
-}
-
-cbls() {
-  $quoted_path ls "\$@"
-}
-
-ls() {
-  cbls "\$@"
-}
+export COLORBASH_BIN=$quoted_path
+. $quoted_init_path
 EOF
 }
 

@@ -55,6 +55,7 @@ main() {
 
   install -m 0755 "$ROOT_DIR/colorbash" "$package_dir/colorbash"
   install -m 0755 "$ROOT_DIR/cb" "$package_dir/cb"
+  install -m 0644 "$ROOT_DIR/colorbash-init.sh" "$package_dir/colorbash-init.sh"
   install -m 0755 "$ROOT_DIR/install.sh" "$package_dir/install.sh"
   install -m 0755 "$ROOT_DIR/uninstall.sh" "$package_dir/uninstall.sh"
   install -m 0755 "$ROOT_DIR/scripts/generate-homebrew-formula.sh" "$package_dir/scripts/generate-homebrew-formula.sh"

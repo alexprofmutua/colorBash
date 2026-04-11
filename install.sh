@@ -55,7 +55,7 @@ resolve_default_shell_rc() {
 
 ensure_source_files() {
   local required_file
-  for required_file in colorbash cb README.md LICENSE LICENSING.md VERSION; do
+  for required_file in colorbash cb colorbash-init.sh README.md LICENSE LICENSING.md VERSION; do
     if [ ! -f "$SCRIPT_DIR/$required_file" ]; then
       die "Missing required file: $SCRIPT_DIR/$required_file"
     fi
@@ -125,6 +125,7 @@ main() {
 
   install -m 0755 "$SCRIPT_DIR/colorbash" "$BIN_DIR/colorbash"
   install -m 0755 "$SCRIPT_DIR/cb" "$BIN_DIR/cb"
+  install -m 0644 "$SCRIPT_DIR/colorbash-init.sh" "$SHARE_DIR/colorbash-init.sh"
   install -m 0644 "$SCRIPT_DIR/README.md" "$SHARE_DIR/README.md"
   install -m 0644 "$SCRIPT_DIR/LICENSE" "$SHARE_DIR/LICENSE"
   install -m 0644 "$SCRIPT_DIR/LICENSING.md" "$SHARE_DIR/LICENSING.md"

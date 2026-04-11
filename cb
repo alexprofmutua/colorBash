@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+
+if [[ "$SOURCE_PATH" != */* ]]; then
+  SOURCE_PATH="$(command -v "$SOURCE_PATH")"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+exec "$SCRIPT_DIR/colorbash" "$@"

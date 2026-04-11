@@ -1,0 +1,546 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROGRAM_NAME="${0##*/}"
+COLORBASH_CONFIG_DIR="${COLORBASH_CONFIG_DIR:-$HOME/.config/colorbash}"
+RULES_FILE="$COLORBASH_CONFIG_DIR/rules.tsv"
+RESET_CODE=$'\033[0m'
+
+usage() {
+  cat <<EOF
+Usage:
+  $PROGRAM_NAME <folder-name> <color>
+  $PROGRAM_NAME set <folder-name> <color>
+  $PROGRAM_NAME remove <folder-name>
+  $PROGRAM_NAME list
+  $PROGRAM_NAME clear
+  $PROGRAM_NAME ls [ls-flags]
+  $PROGRAM_NAME init
+  $PROGRAM_NAME help
+
+Examples:
+  $PROGRAM_NAME test_case red
+  $PROGRAM_NAME assets '#ff8800'
+  $PROGRAM_NAME logs 214
+  $PROGRAM_NAME list
+  $PROGRAM_NAME remove test_case
+
+Supported colors:
+  Named colors: red, green, blue, yellow, magenta, cyan, white, black
+  Bright colors: bright-red, bright-blue, bright-cyan, etc.
+  256-color palette: 0-255
+  Hex colors: #RRGGBB
+
+Notes:
+  - Exact folder-name coloring is not a native macOS ls feature, so "$PROGRAM_NAME ls"
+    provides the custom coloring for plain interactive ls usage.
+  - Add this to your shell config after the script is on your PATH:
+      eval "\$($PROGRAM_NAME init)"
+EOF
+}
+
+die() {
+  printf '%s\n' "$*" >&2
+  exit 1
+}
+
+ensure_config_dir() {
+  mkdir -p "$COLORBASH_CONFIG_DIR"
+  if [ ! -f "$RULES_FILE" ]; then
+    : > "$RULES_FILE"
+  fi
+}
+
+resolve_script_path() {
+  local source_path script_dir
+  source_path="${BASH_SOURCE[0]}"
+
+  if [[ "$source_path" != */* ]]; then
+    source_path="$(command -v "$source_path")"
+  fi
+
+  script_dir="$(cd "$(dirname "$source_path")" && pwd)"
+  printf '%s/%s\n' "$script_dir" "${source_path##*/}"
+}
+
+lower() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+shell_quote() {
+  local value
+  value=${1//\'/\'\\\'\'}
+  printf "'%s'" "$value"
+}
+
+resolve_color_spec() {
+  local raw lowered hex r g b n
+  raw="$1"
+  lowered=$(lower "$raw")
+
+  case "$lowered" in
+    black) printf '30\n'; return 0 ;;
+    red) printf '31\n'; return 0 ;;
+    green) printf '32\n'; return 0 ;;
+    yellow) printf '33\n'; return 0 ;;
+    blue) printf '34\n'; return 0 ;;
+    magenta) printf '35\n'; return 0 ;;
+    cyan) printf '36\n'; return 0 ;;
+    white) printf '37\n'; return 0 ;;
+    gray|grey|bright-black|light-black) printf '90\n'; return 0 ;;
+    bright-red|light-red) printf '91\n'; return 0 ;;
+    bright-green|light-green) printf '92\n'; return 0 ;;
+    bright-yellow|light-yellow) printf '93\n'; return 0 ;;
+    bright-blue|light-blue) printf '94\n'; return 0 ;;
+    bright-magenta|light-magenta) printf '95\n'; return 0 ;;
+    bright-cyan|light-cyan) printf '96\n'; return 0 ;;
+    bright-white|light-white) printf '97\n'; return 0 ;;
+  esac
+
+  if [[ "$raw" =~ ^#?([[:xdigit:]]{6})$ ]]; then
+    hex="${BASH_REMATCH[1]}"
+    r=$((16#${hex:0:2}))
+    g=$((16#${hex:2:2}))
+    b=$((16#${hex:4:2}))
+    printf '38;2;%s;%s;%s\n' "$r" "$g" "$b"
+    return 0
+  fi
+
+  if [[ "$raw" =~ ^[0-9]{1,3}$ ]]; then
+    n="$raw"
+    if [ "$n" -ge 0 ] && [ "$n" -le 255 ]; then
+      printf '38;5;%s\n' "$n"
+      return 0
+    fi
+  fi
+
+  if [[ "$lowered" =~ ^rgb:([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3})$ ]]; then
+    r="${BASH_REMATCH[1]}"
+    g="${BASH_REMATCH[2]}"
+    b="${BASH_REMATCH[3]}"
+    if [ "$r" -le 255 ] && [ "$g" -le 255 ] && [ "$b" -le 255 ]; then
+      printf '38;2;%s;%s;%s\n' "$r" "$g" "$b"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+write_rule() {
+  local folder_name color_label color_spec tmp_file existing_name existing_label existing_spec
+  folder_name="$1"
+  color_label="$2"
+  color_spec="$3"
+
+  ensure_config_dir
+  tmp_file="$(mktemp "${TMPDIR:-/tmp}/colorbash.XXXXXX")"
+
+  if [ -s "$RULES_FILE" ]; then
+    while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+      [ -n "${existing_name:-}" ] || continue
+      if [ "$existing_name" != "$folder_name" ]; then
+        printf '%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" >> "$tmp_file"
+      fi
+    done < "$RULES_FILE"
+  fi
+
+  printf '%s\t%s\t%s\n' "$folder_name" "$color_label" "$color_spec" >> "$tmp_file"
+  mv "$tmp_file" "$RULES_FILE"
+}
+
+remove_rule() {
+  local folder_name tmp_file removed existing_name existing_label existing_spec
+  folder_name="$1"
+  removed=0
+
+  ensure_config_dir
+  tmp_file="$(mktemp "${TMPDIR:-/tmp}/colorbash.XXXXXX")"
+
+  if [ -s "$RULES_FILE" ]; then
+    while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+      [ -n "${existing_name:-}" ] || continue
+      if [ "$existing_name" = "$folder_name" ]; then
+        removed=1
+        continue
+      fi
+      printf '%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" >> "$tmp_file"
+    done < "$RULES_FILE"
+  fi
+
+  mv "$tmp_file" "$RULES_FILE"
+
+  if [ "$removed" -eq 0 ]; then
+    die "No saved color found for \"$folder_name\"."
+  fi
+}
+
+clear_rules() {
+  ensure_config_dir
+  : > "$RULES_FILE"
+}
+
+COLORBASH_RULE_LABEL=""
+COLORBASH_RULE_SPEC=""
+
+lookup_rule() {
+  local folder_name existing_name existing_label existing_spec
+  folder_name="$1"
+  COLORBASH_RULE_LABEL=""
+  COLORBASH_RULE_SPEC=""
+
+  ensure_config_dir
+  if [ ! -s "$RULES_FILE" ]; then
+    return 1
+  fi
+
+  while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+    [ -n "${existing_name:-}" ] || continue
+    if [ "$existing_name" = "$folder_name" ]; then
+      COLORBASH_RULE_LABEL="$existing_label"
+      COLORBASH_RULE_SPEC="$existing_spec"
+      return 0
+    fi
+  done < "$RULES_FILE"
+
+  return 1
+}
+
+print_colored_text() {
+  local text color_spec
+  text="$1"
+  color_spec="$2"
+
+  if [ -n "$color_spec" ]; then
+    printf '\033[%sm%s%s' "$color_spec" "$text" "$RESET_CODE"
+  else
+    printf '%s' "$text"
+  fi
+}
+
+default_color_spec_for_path() {
+  local path
+  path="$1"
+
+  if [ -L "$path" ]; then
+    printf '36\n'
+    return 0
+  fi
+
+  if [ -d "$path" ]; then
+    printf '34\n'
+    return 0
+  fi
+
+  if [ -x "$path" ] && [ ! -d "$path" ]; then
+    printf '32\n'
+    return 0
+  fi
+
+  printf '\n'
+}
+
+native_ls() {
+  if [ -t 1 ]; then
+    if ls -Gd . >/dev/null 2>&1; then
+      ls -G "$@"
+      return
+    fi
+    if ls --color=auto -d . >/dev/null 2>&1; then
+      ls --color=auto "$@"
+      return
+    fi
+  fi
+
+  ls "$@"
+}
+
+COLORBASH_ENTRIES=()
+
+collect_current_dir_entries() {
+  local show_all almost_all saved_nullglob saved_dotglob entry
+  show_all="$1"
+  almost_all="$2"
+
+  saved_nullglob="$(shopt -p nullglob || true)"
+  saved_dotglob="$(shopt -p dotglob || true)"
+
+  shopt -s nullglob
+  if [ "$show_all" -eq 1 ] || [ "$almost_all" -eq 1 ]; then
+    shopt -s dotglob
+  fi
+
+  COLORBASH_ENTRIES=(./*)
+
+  eval "$saved_nullglob"
+  eval "$saved_dotglob"
+
+  if [ "$show_all" -eq 1 ]; then
+    COLORBASH_ENTRIES=(./. ./.. "${COLORBASH_ENTRIES[@]}")
+  fi
+}
+
+render_current_dir() {
+  local show_all almost_all one_per_line count max_name_len term_cols col_width col_count row_count
+  local entry folder_name custom_spec color_spec name_length index row col pad is_last
+  local rendered_names=() raw_names=() specs=()
+
+  show_all="$1"
+  almost_all="$2"
+  one_per_line="$3"
+
+  collect_current_dir_entries "$show_all" "$almost_all"
+  count="${#COLORBASH_ENTRIES[@]}"
+
+  if [ "$count" -eq 0 ]; then
+    return 0
+  fi
+
+  max_name_len=0
+
+  for entry in "${COLORBASH_ENTRIES[@]}"; do
+    folder_name="${entry#./}"
+
+    if lookup_rule "$folder_name"; then
+      custom_spec="$COLORBASH_RULE_SPEC"
+    else
+      custom_spec=""
+    fi
+
+    if [ -n "$custom_spec" ]; then
+      color_spec="$custom_spec"
+    else
+      color_spec="$(default_color_spec_for_path "$entry")"
+    fi
+
+    raw_names+=("$folder_name")
+    specs+=("$color_spec")
+
+    name_length="${#folder_name}"
+    if [ "$name_length" -gt "$max_name_len" ]; then
+      max_name_len="$name_length"
+    fi
+  done
+
+  if [ "$one_per_line" -eq 1 ]; then
+    col_count=1
+  else
+    term_cols="$(tput cols 2>/dev/null || printf '80')"
+    col_width=$((max_name_len + 2))
+    if [ "$col_width" -lt 1 ]; then
+      col_width=1
+    fi
+    col_count=$((term_cols / col_width))
+    if [ "$col_count" -lt 1 ]; then
+      col_count=1
+    fi
+  fi
+
+  if [ "$col_count" -eq 1 ]; then
+    for index in "${!raw_names[@]}"; do
+      print_colored_text "${raw_names[$index]}" "${specs[$index]}"
+      printf '\n'
+    done
+    return 0
+  fi
+
+  row_count=$(((count + col_count - 1) / col_count))
+  col_width=$((max_name_len + 2))
+
+  for ((row = 0; row < row_count; row++)); do
+    for ((col = 0; col < col_count; col++)); do
+      index=$((col * row_count + row))
+      if [ "$index" -ge "$count" ]; then
+        continue
+      fi
+
+      is_last=0
+      if [ $((index + row_count)) -ge "$count" ]; then
+        is_last=1
+      fi
+
+      print_colored_text "${raw_names[$index]}" "${specs[$index]}"
+
+      if [ "$is_last" -eq 0 ]; then
+        pad=$((col_width - ${#raw_names[$index]}))
+        if [ "$pad" -lt 1 ]; then
+          pad=1
+        fi
+        printf '%*s' "$pad" ''
+      fi
+    done
+    printf '\n'
+  done
+}
+
+cmd_set() {
+  local folder_name color_input color_spec
+  folder_name="$1"
+  color_input="$2"
+
+  if [ -z "$folder_name" ]; then
+    die "Folder name cannot be empty."
+  fi
+
+  if ! color_spec="$(resolve_color_spec "$color_input")"; then
+    die "Unsupported color \"$color_input\". Use a named color, 0-255, or #RRGGBB."
+  fi
+
+  write_rule "$folder_name" "$color_input" "$color_spec"
+  printf 'Saved color for "%s": ' "$folder_name"
+  print_colored_text "$color_input" "$color_spec"
+  printf '\n'
+}
+
+cmd_remove() {
+  local folder_name
+  folder_name="$1"
+
+  if [ -z "$folder_name" ]; then
+    die "Please provide the folder name to remove."
+  fi
+
+  remove_rule "$folder_name"
+  printf 'Removed custom color for "%s".\n' "$folder_name"
+}
+
+cmd_list() {
+  local existing_name existing_label existing_spec
+  ensure_config_dir
+
+  if [ ! -s "$RULES_FILE" ]; then
+    printf 'No custom folder colors saved yet.\n'
+    return 0
+  fi
+
+  while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+    [ -n "${existing_name:-}" ] || continue
+    printf '%-24s ' "$existing_name"
+    print_colored_text "$existing_label" "$existing_spec"
+    printf '\n'
+  done < "$RULES_FILE"
+}
+
+cmd_init() {
+  local script_path quoted_path
+  script_path="$(resolve_script_path)"
+  quoted_path="$(shell_quote "$script_path")"
+
+  cat <<EOF
+cb() {
+  $quoted_path "\$@"
+}
+
+cbls() {
+  $quoted_path ls "\$@"
+}
+
+ls() {
+  cbls "\$@"
+}
+EOF
+}
+
+cmd_ls() {
+  local show_all almost_all one_per_line arg chars i char
+  show_all=0
+  almost_all=0
+  one_per_line=0
+
+  if [ ! -t 1 ]; then
+    native_ls "$@"
+    return 0
+  fi
+
+  for arg in "$@"; do
+    if [ "$arg" = "--" ]; then
+      native_ls "$@"
+      return 0
+    fi
+
+    if [[ "$arg" == -* ]] && [ "$arg" != "-" ]; then
+      chars="${arg#-}"
+      if [ -z "$chars" ]; then
+        native_ls "$@"
+        return 0
+      fi
+
+      for ((i = 0; i < ${#chars}; i++)); do
+        char="${chars:$i:1}"
+        case "$char" in
+          a) show_all=1 ;;
+          A) almost_all=1 ;;
+          1) one_per_line=1 ;;
+          *)
+            native_ls "$@"
+            return 0
+            ;;
+        esac
+      done
+    else
+      native_ls "$@"
+      return 0
+    fi
+  done
+
+  render_current_dir "$show_all" "$almost_all" "$one_per_line"
+}
+
+main() {
+  local command
+
+  if [ "$#" -eq 0 ]; then
+    usage
+    exit 0
+  fi
+
+  command="$1"
+
+  case "$command" in
+    help|-h|--help)
+      usage
+      ;;
+    init)
+      shift
+      cmd_init "$@"
+      ;;
+    list)
+      shift
+      cmd_list "$@"
+      ;;
+    clear)
+      shift
+      clear_rules
+      printf 'Cleared all saved folder colors.\n'
+      ;;
+    remove|rm|unset|delete)
+      shift
+      if [ "$#" -ne 1 ]; then
+        die "Usage: $PROGRAM_NAME remove <folder-name>"
+      fi
+      cmd_remove "$1"
+      ;;
+    set)
+      shift
+      if [ "$#" -ne 2 ]; then
+        die "Usage: $PROGRAM_NAME set <folder-name> <color>"
+      fi
+      cmd_set "$1" "$2"
+      ;;
+    ls)
+      shift
+      cmd_ls "$@"
+      ;;
+    *)
+      if [ "$#" -eq 2 ]; then
+        cmd_set "$1" "$2"
+      else
+        usage
+        exit 1
+      fi
+      ;;
+  esac
+}
+
+main "$@"

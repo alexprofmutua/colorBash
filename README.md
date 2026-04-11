@@ -134,4 +134,4 @@ For the full GitHub release and Homebrew tap workflow, see [PUBLISHING.md](/User
 
 This project is available under the GNU Affero General Public License v3.0 in [LICENSE](/Users/alexprof/Projects/colorBash/LICENSE).
 
-If you want to use `colorbash` without AGPLv3 obligations, a separate commercial license may be available. See [LICENSING.md](/Users/alexprof/Projects/colorBash/LICENSING.md).
+If you want to use `colorbash` without AGPLv3 obligations, a separate commercial license may be available from Alex Mutua. Contact: `alexmusyoki834@gmail.com`. See [LICENSING.md](/Users/alexprof/Projects/colorBash/LICENSING.md).

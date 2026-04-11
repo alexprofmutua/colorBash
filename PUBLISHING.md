@@ -1,159 +1,157 @@
 # Publishing colorbash
 
-This guide takes `colorbash` from a local project to:
+This file describes the maintainer workflow for publishing new `colorbash` releases.
 
-- a public GitHub repository
-- a downloadable GitHub Release
-- a Homebrew tap users can install from
+## Current Published Setup
 
-## 1. Initialize And Push The Main Repo
+- Main repo: [amm22-lab/colorBash](https://github.com/amm22-lab/colorBash)
+- Homebrew tap: [amm22-lab/homebrew-colorbash](https://github.com/amm22-lab/homebrew-colorbash)
+- Current release line: `v0.1.2`
+- User install command:
 
-If this directory is not already a git repository:
+```bash
+brew install amm22-lab/colorbash/colorbash
+echo 'eval "$(colorbash init)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## One-Time Repo Setup
+
+If you are starting from scratch on a new machine:
 
 ```bash
 cd /Users/alexprof/Projects/colorBash
-git init -b main
-git add .
-git commit -m "Initial release of colorbash"
+git remote -v
+gh auth status
 ```
 
-Create a GitHub repository and push it:
+The expected repositories are:
+
+- main app repo: `amm22-lab/colorBash`
+- Homebrew tap repo: `amm22-lab/homebrew-colorbash`
+
+If the tap repo does not exist yet, create it once:
 
 ```bash
-gh repo create colorBash --public --source=. --remote=origin --push
+cd /tmp
+gh repo create amm22-lab/homebrew-colorbash --public --clone --description "Homebrew tap for colorbash"
 ```
 
-If you prefer the GitHub website, create the repo there first and then run:
+## Release Workflow
 
-```bash
-git remote add origin git@github.com:<your-github-name>/colorBash.git
-git push -u origin main
+### 1. Update the project version
+
+Edit `VERSION` to the new version number, for example:
+
+```text
+0.1.3
 ```
 
-## 2. Create A Release Archive
-
-The project version is stored in `VERSION`.
-
-Build a release archive:
+### 2. Build the release archive
 
 ```bash
+cd /Users/alexprof/Projects/colorBash
 ./scripts/package-release.sh
 ```
 
-That prints:
+This prints:
 
 - the release archive path
 - the SHA256 checksum
 
-For `VERSION=0.1.0`, the archive will be:
+For example, a release might produce:
 
 ```bash
-dist/colorbash-v0.1.0.tar.gz
+dist/colorbash-v0.1.3.tar.gz
 ```
 
-## 3. Tag And Publish A GitHub Release
+### 3. Regenerate the Homebrew formula
 
-Create and push a version tag:
+Use the SHA256 printed by the package script:
 
 ```bash
-git tag v0.1.0
-git push origin main --tags
+./scripts/generate-homebrew-formula.sh amm22-lab colorBash 0.1.3 <sha256>
 ```
 
-Create a GitHub Release with the packaged archive attached:
-
-```bash
-gh release create v0.1.0 dist/colorbash-v0.1.0.tar.gz \
-  --title "colorbash v0.1.0" \
-  --notes "First public release of colorbash."
-```
-
-If you do not use the GitHub CLI, create the release in the GitHub web UI and upload the `dist/` archive manually.
-
-## 4. Create The Homebrew Tap Repo
-
-Create a separate repository named:
-
-```bash
-homebrew-colorbash
-```
-
-Clone it locally:
-
-```bash
-gh repo create homebrew-colorbash --public
-gh repo clone <your-github-name>/homebrew-colorbash ../homebrew-colorbash
-```
-
-Or clone it after creating it in the GitHub web UI:
-
-```bash
-git clone git@github.com:<your-github-name>/homebrew-colorbash.git ../homebrew-colorbash
-```
-
-## 5. Generate The Homebrew Formula
-
-Use the SHA256 printed by `./scripts/package-release.sh`.
-
-The formula is designed to install from the GitHub Release asset:
-
-```text
-https://github.com/<your-github-name>/colorBash/releases/download/v0.1.0/colorbash-v0.1.0.tar.gz
-```
-
-Generate the formula with:
-
-```bash
-./scripts/generate-homebrew-formula.sh <your-github-name> colorBash 0.1.0 <sha256>
-```
-
-That writes:
+This updates:
 
 ```bash
 Formula/colorbash.rb
 ```
 
-Copy it into the tap repository:
+The formula installs from the GitHub Release asset, not from the raw source archive:
 
-```bash
-mkdir -p ../homebrew-colorbash/Formula
-cp Formula/colorbash.rb ../homebrew-colorbash/Formula/colorbash.rb
+```text
+https://github.com/amm22-lab/colorBash/releases/download/v0.1.3/colorbash-v0.1.3.tar.gz
 ```
 
-Then commit and push the tap:
+### 4. Commit and push the main repo
 
 ```bash
-cd ../homebrew-colorbash
-git add Formula/colorbash.rb
-git commit -m "Add colorbash 0.1.0"
+git add .
+git commit -m "Release 0.1.3"
 git push origin main
 ```
 
-## 6. What Users Will Run
-
-After the main repo and tap are public, users can install with:
+### 5. Tag and publish the GitHub Release
 
 ```bash
-brew install <your-github-name>/colorbash/colorbash
+git tag v0.1.3
+git push origin v0.1.3
+gh release create v0.1.3 dist/colorbash-v0.1.3.tar.gz \
+  --title "colorbash v0.1.3" \
+  --notes "Describe the release here."
 ```
 
-Then enable the shell hook:
+If you prefer the GitHub web UI, create the release there and upload `dist/colorbash-v0.1.3.tar.gz` manually.
+
+### 6. Update the Homebrew tap repo
+
+If you already cloned the tap repo:
 
 ```bash
-echo 'eval "$(colorbash init)"' >> ~/.zshrc
-source ~/.zshrc
+cp /Users/alexprof/Projects/colorBash/Formula/colorbash.rb /tmp/homebrew-colorbash/Formula/colorbash.rb
+cd /tmp/homebrew-colorbash
+git add Formula/colorbash.rb
+git commit -m "Update colorbash to 0.1.3"
+git push origin main
 ```
 
-## 7. Release Checklist For Future Versions
+If the tap repo is not cloned locally yet:
+
+```bash
+cd /tmp
+gh repo clone amm22-lab/homebrew-colorbash
+cp /Users/alexprof/Projects/colorBash/Formula/colorbash.rb /tmp/homebrew-colorbash/Formula/colorbash.rb
+cd /tmp/homebrew-colorbash
+git add Formula/colorbash.rb
+git commit -m "Update colorbash to 0.1.3"
+git push origin main
+```
+
+## Verification
+
+After publishing:
+
+```bash
+brew update
+brew info amm22-lab/colorbash/colorbash
+brew upgrade amm22-lab/colorbash/colorbash
+```
+
+The expected result is that Homebrew reports the new stable version and installs that same version locally.
+
+## Quick Checklist
 
 For each new release:
 
 1. update `VERSION`
-2. commit your changes
-3. run `./scripts/package-release.sh`
-4. copy the new SHA256
-5. regenerate `Formula/colorbash.rb`
-6. commit and push the main repo
-7. tag the release and publish the GitHub Release
+2. run `./scripts/package-release.sh`
+3. copy the printed SHA256
+4. run `./scripts/generate-homebrew-formula.sh amm22-lab colorBash <version> <sha256>`
+5. commit and push `main`
+6. tag `v<version>` and push the tag
+7. create the GitHub Release and upload `dist/colorbash-v<version>.tar.gz`
 8. copy the updated formula into `homebrew-colorbash`
 9. commit and push the tap repo
+10. run `brew update` and `brew info amm22-lab/colorbash/colorbash`

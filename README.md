@@ -21,6 +21,16 @@ These images are simple mockups of the terminal output, so your exact font, spac
 
 ## Install
 
+### Homebrew
+
+After the release asset and tap repo are published, install with:
+
+```bash
+brew install amm22-lab/colorbash/colorbash
+echo 'eval "$(colorbash init)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
 ### Fastest local install
 
 If someone downloads this project as a zip, tarball, or git clone, they can install it with:

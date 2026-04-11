@@ -39,7 +39,7 @@ main() {
 class Colorbash < Formula
   desc "Color one exact folder name differently in terminal ls output"
   homepage "https://github.com/$owner/$repo"
-  url "https://github.com/$owner/$repo/archive/refs/tags/v$version.tar.gz"
+  url "https://github.com/$owner/$repo/releases/download/v$version/colorbash-v$version.tar.gz"
   sha256 "$sha256"
   license "AGPL-3.0-only"
 

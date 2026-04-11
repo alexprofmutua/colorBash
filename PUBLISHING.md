@@ -93,7 +93,15 @@ git clone git@github.com:<your-github-name>/homebrew-colorbash.git ../homebrew-c
 
 ## 5. Generate The Homebrew Formula
 
-Use the SHA256 printed by `./scripts/package-release.sh`:
+Use the SHA256 printed by `./scripts/package-release.sh`.
+
+The formula is designed to install from the GitHub Release asset:
+
+```text
+https://github.com/<your-github-name>/colorBash/releases/download/v0.1.0/colorbash-v0.1.0.tar.gz
+```
+
+Generate the formula with:
 
 ```bash
 ./scripts/generate-homebrew-formula.sh <your-github-name> colorBash 0.1.0 <sha256>
@@ -126,14 +134,14 @@ git push origin main
 After the main repo and tap are public, users can install with:
 
 ```bash
-brew tap <your-github-name>/colorbash
-brew install colorbash
+brew install <your-github-name>/colorbash/colorbash
 ```
 
-Or directly:
+Then enable the shell hook:
 
 ```bash
-brew install <your-github-name>/colorbash/colorbash
+echo 'eval "$(colorbash init)"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ## 7. Release Checklist For Future Versions

@@ -1,8 +1,8 @@
 class Colorbash < Formula
   desc "Color one exact folder name differently in terminal ls output"
   homepage "https://github.com/amm22-lab/colorBash"
-  url "https://github.com/amm22-lab/colorBash/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "99f925d23fd23216a9ec88e2ab1775d8d99c6f36764cbdb1192a40775fb9f315"
+  url "https://github.com/amm22-lab/colorBash/releases/download/v0.1.0/colorbash-v0.1.0.tar.gz"
+  sha256 "f0dc9a02d1e7f671bf60566a48594269d992c07a2efa50e835168f28f5f4bcf7"
   license "AGPL-3.0-only"
 
   def install

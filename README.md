@@ -7,6 +7,18 @@ macOS `ls` only colors by file type, not by exact name, so this project solves t
 - saving folder-name color rules with `cb <name> <color>`
 - wrapping plain interactive `ls` so your chosen folder name gets its own color
 
+## Preview
+
+### Before
+
+![Before colorbash](examples/before.svg)
+
+### After
+
+![After colorbash](examples/after.svg)
+
+These images are simple mockups of the terminal output, so your exact font, spacing, and colors may vary a little depending on your shell theme.
+
 ## Install
 
 ### Fastest local install

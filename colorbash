@@ -21,6 +21,7 @@ Usage:
 
 Examples:
   $PROGRAM_NAME test_case red
+  $PROGRAM_NAME assets orange
   $PROGRAM_NAME assets '#ff8800'
   $PROGRAM_NAME logs 214
   $PROGRAM_NAME list
@@ -28,6 +29,8 @@ Examples:
 
 Supported colors:
   Named colors: red, green, blue, yellow, magenta, cyan, white, black
+  Extra named colors: orange, pink, teal, purple, violet, indigo, lime, gold,
+    coral, turquoise, brown, navy, olive, maroon, silver
   Bright colors: bright-red, bright-blue, bright-cyan, etc.
   256-color palette: 0-255
   Hex colors: #RRGGBB
@@ -96,6 +99,21 @@ resolve_color_spec() {
     bright-magenta|light-magenta) printf '95\n'; return 0 ;;
     bright-cyan|light-cyan) printf '96\n'; return 0 ;;
     bright-white|light-white) printf '97\n'; return 0 ;;
+    orange) printf '38;2;255;165;0\n'; return 0 ;;
+    pink) printf '38;2;255;105;180\n'; return 0 ;;
+    teal) printf '38;2;0;128;128\n'; return 0 ;;
+    purple) printf '38;2;128;0;128\n'; return 0 ;;
+    violet) printf '38;2;138;43;226\n'; return 0 ;;
+    indigo) printf '38;2;75;0;130\n'; return 0 ;;
+    lime) printf '38;2;50;205;50\n'; return 0 ;;
+    gold) printf '38;2;255;215;0\n'; return 0 ;;
+    coral) printf '38;2;255;127;80\n'; return 0 ;;
+    turquoise) printf '38;2;64;224;208\n'; return 0 ;;
+    brown) printf '38;2;165;42;42\n'; return 0 ;;
+    navy) printf '38;2;0;0;128\n'; return 0 ;;
+    olive) printf '38;2;128;128;0\n'; return 0 ;;
+    maroon) printf '38;2;128;0;0\n'; return 0 ;;
+    silver) printf '38;2;192;192;192\n'; return 0 ;;
   esac
 
   if [[ "$raw" =~ ^#?([[:xdigit:]]{6})$ ]]; then
@@ -147,7 +165,7 @@ write_rule() {
   fi
 
   printf '%s\t%s\t%s\n' "$folder_name" "$color_label" "$color_spec" >> "$tmp_file"
-  mv "$tmp_file" "$RULES_FILE"
+  command mv -f "$tmp_file" "$RULES_FILE"
 }
 
 remove_rule() {
@@ -169,7 +187,7 @@ remove_rule() {
     done < "$RULES_FILE"
   fi
 
-  mv "$tmp_file" "$RULES_FILE"
+  command mv -f "$tmp_file" "$RULES_FILE"
 
   if [ "$removed" -eq 0 ]; then
     die "No saved color found for \"$folder_name\"."

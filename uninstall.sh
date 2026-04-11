@@ -59,7 +59,7 @@ remove_shell_block() {
     /^# <<< colorbash <<<$/{ skip = 0; next }
     skip == 0 { print }
   ' "$rc_file" > "$temp_file"
-  mv "$temp_file" "$rc_file"
+  command mv -f "$temp_file" "$rc_file"
 }
 
 parse_args() {

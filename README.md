@@ -71,6 +71,14 @@ Set a custom color for one folder name:
 cb test_case red
 ```
 
+Use one of the extra named colors:
+
+```bash
+cb assets orange
+cb docs teal
+cb screenshots pink
+```
+
 Use a hex color:
 
 ```bash
@@ -104,6 +112,7 @@ cb clear
 ## Supported Colors
 
 - Named colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`
+- Extra named colors: `orange`, `pink`, `teal`, `purple`, `violet`, `indigo`, `lime`, `gold`, `coral`, `turquoise`, `brown`, `navy`, `olive`, `maroon`, `silver`
 - Bright colors: `bright-red`, `bright-blue`, `bright-cyan`, and similar
 - 256-color palette values: `0` through `255`
 - Hex values: `#RRGGBB`

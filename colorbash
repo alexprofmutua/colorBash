@@ -10,9 +10,10 @@ RESET_CODE=$'\033[0m'
 usage() {
   cat <<EOF
 Usage:
-  $PROGRAM_NAME <folder-name> <color>
-  $PROGRAM_NAME set <folder-name> <color>
-  $PROGRAM_NAME remove <folder-name>
+  $PROGRAM_NAME <name> <color>
+  $PROGRAM_NAME set <name> <color>
+  $PROGRAM_NAME remove <name>
+  $PROGRAM_NAME random
   $PROGRAM_NAME list
   $PROGRAM_NAME clear
   $PROGRAM_NAME ls [ls-flags]
@@ -24,6 +25,7 @@ Examples:
   $PROGRAM_NAME assets orange
   $PROGRAM_NAME assets '#ff8800'
   $PROGRAM_NAME logs 214
+  $PROGRAM_NAME random
   $PROGRAM_NAME list
   $PROGRAM_NAME remove test_case
 
@@ -36,8 +38,11 @@ Supported colors:
   Hex colors: #RRGGBB
 
 Notes:
-  - Exact folder-name coloring is not a native macOS ls feature, so "$PROGRAM_NAME ls"
-    provides the custom coloring for plain interactive ls usage.
+  - Exact file/folder-name coloring is not a native macOS ls feature, so
+    "$PROGRAM_NAME ls" provides the custom coloring for plain interactive ls
+    usage.
+  - "$PROGRAM_NAME random" assigns random colors to the visible files and
+    folders in the current directory only.
   - Add this to your shell config after the script is on your PATH:
       eval "\$($PROGRAM_NAME init)"
 EOF
@@ -147,51 +152,79 @@ resolve_color_spec() {
 }
 
 write_rule() {
-  local folder_name color_label color_spec tmp_file existing_name existing_label existing_spec
-  folder_name="$1"
+  local entry_name color_label color_spec scope tmp_file existing_name existing_label existing_spec existing_scope
+  entry_name="$1"
   color_label="$2"
   color_spec="$3"
+  scope="${4:-}"
 
   ensure_config_dir
   tmp_file="$(mktemp "${TMPDIR:-/tmp}/colorbash.XXXXXX")"
 
   if [ -s "$RULES_FILE" ]; then
-    while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+    while IFS=$'\t' read -r existing_name existing_label existing_spec existing_scope; do
       [ -n "${existing_name:-}" ] || continue
-      if [ "$existing_name" != "$folder_name" ]; then
-        printf '%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" >> "$tmp_file"
+      if [ "$existing_name" != "$entry_name" ] || [ "${existing_scope:-}" != "$scope" ]; then
+        printf '%s\t%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" "${existing_scope:-}" >> "$tmp_file"
       fi
     done < "$RULES_FILE"
   fi
 
-  printf '%s\t%s\t%s\n' "$folder_name" "$color_label" "$color_spec" >> "$tmp_file"
+  printf '%s\t%s\t%s\t%s\n' "$entry_name" "$color_label" "$color_spec" "$scope" >> "$tmp_file"
   command mv -f "$tmp_file" "$RULES_FILE"
 }
 
-remove_rule() {
-  local folder_name tmp_file removed existing_name existing_label existing_spec
-  folder_name="$1"
+remove_rule_exact() {
+  local entry_name scope tmp_file removed existing_name existing_label existing_spec existing_scope
+  entry_name="$1"
+  scope="${2:-}"
   removed=0
 
   ensure_config_dir
   tmp_file="$(mktemp "${TMPDIR:-/tmp}/colorbash.XXXXXX")"
 
   if [ -s "$RULES_FILE" ]; then
-    while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+    while IFS=$'\t' read -r existing_name existing_label existing_spec existing_scope; do
       [ -n "${existing_name:-}" ] || continue
-      if [ "$existing_name" = "$folder_name" ]; then
+      if [ "$existing_name" = "$entry_name" ] && [ "${existing_scope:-}" = "$scope" ]; then
         removed=1
         continue
       fi
-      printf '%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" >> "$tmp_file"
+      printf '%s\t%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" "${existing_scope:-}" >> "$tmp_file"
     done < "$RULES_FILE"
   fi
 
   command mv -f "$tmp_file" "$RULES_FILE"
 
   if [ "$removed" -eq 0 ]; then
-    die "No saved color found for \"$folder_name\"."
+    if [ -n "$scope" ]; then
+      die "No saved color found for \"$entry_name\" in \"$scope\"."
+    fi
+    die "No saved color found for \"$entry_name\"."
   fi
+}
+
+remove_rules_in_scope() {
+  local scope tmp_file removed_count existing_name existing_label existing_spec existing_scope
+  scope="$1"
+  removed_count=0
+
+  ensure_config_dir
+  tmp_file="$(mktemp "${TMPDIR:-/tmp}/colorbash.XXXXXX")"
+
+  if [ -s "$RULES_FILE" ]; then
+    while IFS=$'\t' read -r existing_name existing_label existing_spec existing_scope; do
+      [ -n "${existing_name:-}" ] || continue
+      if [ "${existing_scope:-}" = "$scope" ]; then
+        removed_count=$((removed_count + 1))
+        continue
+      fi
+      printf '%s\t%s\t%s\t%s\n' "$existing_name" "$existing_label" "$existing_spec" "${existing_scope:-}" >> "$tmp_file"
+    done < "$RULES_FILE"
+  fi
+
+  command mv -f "$tmp_file" "$RULES_FILE"
+  printf '%s\n' "$removed_count"
 }
 
 clear_rules() {
@@ -201,26 +234,48 @@ clear_rules() {
 
 COLORBASH_RULE_LABEL=""
 COLORBASH_RULE_SPEC=""
+COLORBASH_RULE_SCOPE=""
 
 lookup_rule() {
-  local folder_name existing_name existing_label existing_spec
-  folder_name="$1"
+  local entry_name scope existing_name existing_label existing_spec existing_scope fallback_label fallback_spec
+  entry_name="$1"
+  scope="${2:-}"
   COLORBASH_RULE_LABEL=""
   COLORBASH_RULE_SPEC=""
+  COLORBASH_RULE_SCOPE=""
+  fallback_label=""
+  fallback_spec=""
 
   ensure_config_dir
   if [ ! -s "$RULES_FILE" ]; then
     return 1
   fi
 
-  while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+  while IFS=$'\t' read -r existing_name existing_label existing_spec existing_scope; do
     [ -n "${existing_name:-}" ] || continue
-    if [ "$existing_name" = "$folder_name" ]; then
+    if [ "$existing_name" != "$entry_name" ]; then
+      continue
+    fi
+
+    if [ -n "$scope" ] && [ "${existing_scope:-}" = "$scope" ]; then
       COLORBASH_RULE_LABEL="$existing_label"
       COLORBASH_RULE_SPEC="$existing_spec"
+      COLORBASH_RULE_SCOPE="$scope"
       return 0
     fi
+
+    if [ -z "${existing_scope:-}" ] && [ -z "$fallback_spec" ]; then
+      fallback_label="$existing_label"
+      fallback_spec="$existing_spec"
+    fi
   done < "$RULES_FILE"
+
+  if [ -n "$fallback_spec" ]; then
+    COLORBASH_RULE_LABEL="$fallback_label"
+    COLORBASH_RULE_SPEC="$fallback_spec"
+    COLORBASH_RULE_SCOPE=""
+    return 0
+  fi
 
   return 1
 }
@@ -300,7 +355,7 @@ collect_current_dir_entries() {
 }
 
 render_current_dir() {
-  local show_all almost_all one_per_line count max_name_len term_cols col_width col_count row_count
+  local show_all almost_all one_per_line count max_name_len term_cols col_width col_count row_count current_scope
   local entry folder_name custom_spec color_spec name_length index row col pad is_last
   local rendered_names=() raw_names=() specs=()
 
@@ -310,6 +365,7 @@ render_current_dir() {
 
   collect_current_dir_entries "$show_all" "$almost_all"
   count="${#COLORBASH_ENTRIES[@]}"
+  current_scope="$(pwd -P)"
 
   if [ "$count" -eq 0 ]; then
     return 0
@@ -320,7 +376,7 @@ render_current_dir() {
   for entry in "${COLORBASH_ENTRIES[@]}"; do
     folder_name="${entry#./}"
 
-    if lookup_rule "$folder_name"; then
+    if lookup_rule "$folder_name" "$current_scope"; then
       custom_spec="$COLORBASH_RULE_SPEC"
     else
       custom_spec=""
@@ -393,51 +449,95 @@ render_current_dir() {
 }
 
 cmd_set() {
-  local folder_name color_input color_spec
-  folder_name="$1"
+  local entry_name color_input color_spec
+  entry_name="$1"
   color_input="$2"
 
-  if [ -z "$folder_name" ]; then
-    die "Folder name cannot be empty."
+  if [ -z "$entry_name" ]; then
+    die "Name cannot be empty."
   fi
 
   if ! color_spec="$(resolve_color_spec "$color_input")"; then
     die "Unsupported color \"$color_input\". Use a named color, 0-255, or #RRGGBB."
   fi
 
-  write_rule "$folder_name" "$color_input" "$color_spec"
-  printf 'Saved color for "%s": ' "$folder_name"
+  write_rule "$entry_name" "$color_input" "$color_spec"
+  printf 'Saved color for "%s": ' "$entry_name"
   print_colored_text "$color_input" "$color_spec"
   printf '\n'
 }
 
 cmd_remove() {
-  local folder_name
-  folder_name="$1"
+  local entry_name current_scope
+  entry_name="$1"
 
-  if [ -z "$folder_name" ]; then
-    die "Please provide the folder name to remove."
+  if [ -z "$entry_name" ]; then
+    die "Please provide the name to remove."
   fi
 
-  remove_rule "$folder_name"
-  printf 'Removed custom color for "%s".\n' "$folder_name"
+  current_scope="$(pwd -P)"
+
+  if lookup_rule "$entry_name" "$current_scope"; then
+    remove_rule_exact "$entry_name" "$COLORBASH_RULE_SCOPE"
+  else
+    die "No saved color found for \"$entry_name\"."
+  fi
+
+  printf 'Removed custom color for "%s".\n' "$entry_name"
 }
 
 cmd_list() {
-  local existing_name existing_label existing_spec
+  local existing_name existing_label existing_spec existing_scope
   ensure_config_dir
 
   if [ ! -s "$RULES_FILE" ]; then
-    printf 'No custom folder colors saved yet.\n'
+    printf 'No custom colors saved yet.\n'
     return 0
   fi
 
-  while IFS=$'\t' read -r existing_name existing_label existing_spec; do
+  while IFS=$'\t' read -r existing_name existing_label existing_spec existing_scope; do
     [ -n "${existing_name:-}" ] || continue
-    printf '%-24s ' "$existing_name"
+    if [ -n "${existing_scope:-}" ]; then
+      printf '%-24s @ %s ' "$existing_name" "$existing_scope"
+    else
+      printf '%-24s ' "$existing_name"
+    fi
     print_colored_text "$existing_label" "$existing_spec"
     printf '\n'
   done < "$RULES_FILE"
+}
+
+RANDOM_COLOR_LABEL=""
+RANDOM_COLOR_SPEC=""
+
+pick_random_color() {
+  local color_value
+  color_value=$((16 + RANDOM % 216))
+  RANDOM_COLOR_LABEL="$color_value"
+  RANDOM_COLOR_SPEC="$(resolve_color_spec "$color_value")"
+}
+
+cmd_random() {
+  local current_scope entry entry_name count
+  current_scope="$(pwd -P)"
+
+  collect_current_dir_entries 0 0
+  count="${#COLORBASH_ENTRIES[@]}"
+
+  if [ "$count" -eq 0 ]; then
+    printf 'No visible files or folders found in "%s".\n' "$current_scope"
+    return 0
+  fi
+
+  remove_rules_in_scope "$current_scope" >/dev/null
+
+  for entry in "${COLORBASH_ENTRIES[@]}"; do
+    entry_name="${entry#./}"
+    pick_random_color
+    write_rule "$entry_name" "$RANDOM_COLOR_LABEL" "$RANDOM_COLOR_SPEC" "$current_scope"
+  done
+
+  printf 'Saved random colors for %s visible items in "%s".\n' "$count" "$current_scope"
 }
 
 cmd_init() {
@@ -530,10 +630,17 @@ main() {
       shift
       cmd_list "$@"
       ;;
+    random)
+      shift
+      if [ "$#" -ne 0 ]; then
+        die "Usage: $PROGRAM_NAME random"
+      fi
+      cmd_random
+      ;;
     clear)
       shift
       clear_rules
-      printf 'Cleared all saved folder colors.\n'
+      printf 'Cleared all saved colors.\n'
       ;;
     remove|rm|unset|delete)
       shift

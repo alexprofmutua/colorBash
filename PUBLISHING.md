@@ -6,13 +6,19 @@ This file describes the maintainer workflow for publishing new `colorbash` relea
 
 - Main repo: [amm22-lab/colorBash](https://github.com/amm22-lab/colorBash)
 - Homebrew tap: [amm22-lab/homebrew-colorbash](https://github.com/amm22-lab/homebrew-colorbash)
-- Current release line: `v0.1.2`
+- Current release line: `v0.1.3`
 - User install command:
 
 ```bash
 brew install amm22-lab/colorbash/colorbash
 echo 'eval "$(colorbash init)"' >> ~/.zshrc
 source ~/.zshrc
+```
+
+- No-Homebrew install command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh | bash -s -- --configure-shell
 ```
 
 ## One-Time Repo Setup
@@ -56,13 +62,15 @@ cd /Users/alexprof/Projects/colorBash
 
 This prints:
 
-- the release archive path
+- the versioned release archive path
+- the stable release archive path
 - the SHA256 checksum
 
 For example, a release might produce:
 
 ```bash
 dist/colorbash-v0.1.3.tar.gz
+dist/colorbash.tar.gz
 ```
 
 ### 3. Regenerate the Homebrew formula
@@ -98,12 +106,12 @@ git push origin main
 ```bash
 git tag v0.1.3
 git push origin v0.1.3
-gh release create v0.1.3 dist/colorbash-v0.1.3.tar.gz \
+gh release create v0.1.3 dist/colorbash-v0.1.3.tar.gz dist/colorbash.tar.gz \
   --title "colorbash v0.1.3" \
   --notes "Describe the release here."
 ```
 
-If you prefer the GitHub web UI, create the release there and upload `dist/colorbash-v0.1.3.tar.gz` manually.
+If you prefer the GitHub web UI, create the release there and upload both `dist/colorbash-v0.1.3.tar.gz` and `dist/colorbash.tar.gz` manually.
 
 ### 6. Update the Homebrew tap repo
 
@@ -151,7 +159,7 @@ For each new release:
 4. run `./scripts/generate-homebrew-formula.sh amm22-lab colorBash <version> <sha256>`
 5. commit and push `main`
 6. tag `v<version>` and push the tag
-7. create the GitHub Release and upload `dist/colorbash-v<version>.tar.gz`
+7. create the GitHub Release and upload both `dist/colorbash-v<version>.tar.gz` and `dist/colorbash.tar.gz`
 8. copy the updated formula into `homebrew-colorbash`
 9. commit and push the tap repo
 10. run `brew update` and `brew info amm22-lab/colorbash/colorbash`

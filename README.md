@@ -1,11 +1,12 @@
 # colorbash
 
-`colorbash` lets you color one exact folder name differently in your terminal `ls` output.
+`colorbash` lets you color one exact file or folder name differently in your terminal `ls` output.
 
 macOS `ls` only colors by file type, not by exact name, so this project solves that by:
 
-- saving folder-name color rules with `cb <name> <color>`
-- wrapping plain interactive `ls` so your chosen folder name gets its own color
+- saving exact file/folder-name color rules with `cb <name> <color>`
+- saving a random color per visible file/folder in the current directory with `cb random`
+- wrapping plain interactive `ls` so your chosen file or folder name gets its own color
 
 ## Preview
 
@@ -29,6 +30,21 @@ After the release asset and tap repo are published, install with:
 brew install amm22-lab/colorbash/colorbash
 echo 'eval "$(colorbash init)"' >> ~/.zshrc
 source ~/.zshrc
+```
+
+### One-line install without Homebrew
+
+If someone does not use Homebrew, they can install the latest GitHub Release with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh | bash -s -- --configure-shell
+```
+
+If they prefer not to pipe straight into `bash`, they can download the bootstrap script first:
+
+```bash
+curl -fsSL -o colorbash-bootstrap.sh https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh
+bash colorbash-bootstrap.sh --configure-shell
 ```
 
 ### Fastest local install
@@ -97,6 +113,12 @@ Show saved rules:
 cb list
 ```
 
+Assign random colors to the visible files and folders in the current directory:
+
+```bash
+cb random
+```
+
 Remove one rule:
 
 ```bash
@@ -121,7 +143,8 @@ cb clear
 
 After you add `eval "$(colorbash init)"` to your shell config:
 
-- `cb` stores exact folder-name color rules in `~/.config/colorbash/rules.tsv`
+- `cb` stores exact file/folder-name color rules in `~/.config/colorbash/rules.tsv`
+- `cb random` stores directory-scoped random rules for the current folder only
 - `ls` is wrapped for simple interactive use in the current directory
 - unsupported `ls` modes fall back to your normal system `ls`
 
@@ -142,8 +165,8 @@ The easiest way to share `colorbash` is:
 
 1. publish this repo on GitHub
 2. create a release archive with `./scripts/package-release.sh`
-3. upload the generated `dist/colorbash-vX.Y.Z.tar.gz` file to a GitHub Release
-4. tell users to download the archive and run `./install.sh --configure-shell`
+3. upload both generated release files to a GitHub Release
+4. tell users to either install with Homebrew or use the bootstrap installer
 
 ### Homebrew
 
@@ -160,6 +183,14 @@ Once you have a public GitHub repo and release tarball:
 That writes [Formula/colorbash.rb](/Users/alexprof/Projects/colorBash/Formula/colorbash.rb), which you can place in your Homebrew tap repository.
 
 For the full GitHub release and Homebrew tap workflow, see [PUBLISHING.md](/Users/alexprof/Projects/colorBash/PUBLISHING.md).
+
+### No Homebrew
+
+The bootstrap installer downloads the latest stable release asset from GitHub and runs the bundled installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh | bash -s -- --configure-shell
+```
 
 ## License
 

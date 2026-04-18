@@ -38,7 +38,7 @@ read_version() {
 }
 
 main() {
-  local version package_name temp_dir package_dir archive_path checksum
+  local version package_name temp_dir package_dir archive_path stable_archive_path checksum
 
   if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     usage
@@ -50,6 +50,7 @@ main() {
   temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/colorbash-release.XXXXXX")"
   package_dir="$temp_dir/$package_name"
   archive_path="$OUTPUT_DIR/$package_name.tar.gz"
+  stable_archive_path="$OUTPUT_DIR/colorbash.tar.gz"
 
   mkdir -p "$OUTPUT_DIR" "$package_dir" "$package_dir/scripts"
 
@@ -65,12 +66,14 @@ main() {
   install -m 0644 "$ROOT_DIR/VERSION" "$package_dir/VERSION"
 
   tar -C "$temp_dir" -czf "$archive_path" "$package_name"
+  cp "$archive_path" "$stable_archive_path"
   rm -rf "$temp_dir"
 
   checksum="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
 
-  printf 'Created release archive:\n'
+  printf 'Created release archives:\n'
   printf '  %s\n' "$archive_path"
+  printf '  %s\n' "$stable_archive_path"
   printf 'SHA256:\n'
   printf '  %s\n' "$checksum"
 }

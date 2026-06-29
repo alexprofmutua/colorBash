@@ -1,0 +1,61 @@
+{
+    "version": "0.1.4",
+    "description": "Color exact file and folder names differently in terminal ls output (runs in Git Bash)",
+    "homepage": "https://github.com/amm22-lab/colorBash",
+    "license": "AGPL-3.0-only",
+    "notes": [
+        "colorbash is a bash tool and runs inside Git Bash (installed via the 'git' dependency).",
+        "Open Git Bash, then add colorbash to your shell startup if it isn't already:",
+        "    echo 'eval \"$(colorbash init)\"' >> ~/.bashrc && source ~/.bashrc",
+        "Then try:  cb test_case red   and   ls",
+        "It does NOT run in PowerShell or cmd.exe - use Git Bash."
+    ],
+    "depends": [
+        "git"
+    ],
+    "url": "https://github.com/amm22-lab/colorBash/releases/download/v0.1.4/colorbash-v0.1.4.tar.gz",
+    "hash": "88deb3744bf6d358e684e07c7ba1bc516e81e3b3cfb33832a9b4f8941d5ce056",
+    "extract_dir": "colorbash-v0.1.4",
+    "env_add_path": ".",
+    "post_install": [
+        "$bashrc = Join-Path $env:USERPROFILE '.bashrc'",
+        "$start = '# >>> colorbash >>>'",
+        "$alreadyThere = (Test-Path $bashrc) -and (Select-String -Path $bashrc -Pattern ([regex]::Escape($start)) -Quiet)",
+        "if (-not $alreadyThere) {",
+        "    $appPath = (Resolve-Path $dir).Path",
+        "    $unixPath = '/' + ($appPath -replace ':','' -replace '\\\\','/')",
+        "    $block = @()",
+        "    $block += ''",
+        "    $block += $start",
+        "    $block += 'export PATH=\"' + $unixPath + ':$PATH\"'",
+        "    $block += 'eval \"$(colorbash init)\"'",
+        "    $block += '# <<< colorbash <<<'",
+        "    Add-Content -Path $bashrc -Value $block -Encoding utf8",
+        "    Write-Host 'Added a colorbash block to your Git Bash ~/.bashrc.' -ForegroundColor Green",
+        "    Write-Host 'Open Git Bash (or run: source ~/.bashrc) to start using cb and ls.' -ForegroundColor Yellow",
+        "} else {",
+        "    Write-Host 'colorbash block already present in ~/.bashrc.' -ForegroundColor Green",
+        "}"
+    ],
+    "pre_uninstall": [
+        "$bashrc = Join-Path $env:USERPROFILE '.bashrc'",
+        "if (Test-Path $bashrc) {",
+        "    $lines = Get-Content $bashrc",
+        "    $out = @(); $skip = $false",
+        "    foreach ($l in $lines) {",
+        "        if ($l -eq '# >>> colorbash >>>') { $skip = $true; continue }",
+        "        if ($l -eq '# <<< colorbash <<<') { $skip = $false; continue }",
+        "        if (-not $skip) { $out += $l }",
+        "    }",
+        "    Set-Content -Path $bashrc -Value $out -Encoding utf8",
+        "    Write-Host 'Removed the colorbash block from ~/.bashrc.' -ForegroundColor Green",
+        "}"
+    ],
+    "checkver": {
+        "github": "https://github.com/amm22-lab/colorBash"
+    },
+    "autoupdate": {
+        "url": "https://github.com/amm22-lab/colorBash/releases/download/v$version/colorbash-v$version.tar.gz",
+        "extract_dir": "colorbash-v$version"
+    }
+}

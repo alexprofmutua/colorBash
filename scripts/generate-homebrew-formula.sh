@@ -37,7 +37,7 @@ main() {
 
   cat > "$OUTPUT_FILE" <<EOF
 class Colorbash < Formula
-  desc "Color one exact folder name differently in terminal ls output"
+  desc "Color exact file and folder names differently in terminal ls output"
   homepage "https://github.com/$owner/$repo"
   url "https://github.com/$owner/$repo/releases/download/v$version/colorbash-v$version.tar.gz"
   sha256 "$sha256"

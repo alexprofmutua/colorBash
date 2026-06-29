@@ -52,24 +52,34 @@ main() {
   archive_path="$OUTPUT_DIR/$package_name.tar.gz"
   stable_archive_path="$OUTPUT_DIR/colorbash.tar.gz"
 
-  mkdir -p "$OUTPUT_DIR" "$package_dir" "$package_dir/scripts"
+  mkdir -p "$OUTPUT_DIR" "$package_dir" "$package_dir/scripts" "$package_dir/bucket"
 
   install -m 0755 "$ROOT_DIR/colorbash" "$package_dir/colorbash"
   install -m 0755 "$ROOT_DIR/cb" "$package_dir/cb"
   install -m 0644 "$ROOT_DIR/colorbash-init.sh" "$package_dir/colorbash-init.sh"
   install -m 0755 "$ROOT_DIR/install.sh" "$package_dir/install.sh"
   install -m 0755 "$ROOT_DIR/uninstall.sh" "$package_dir/uninstall.sh"
+  install -m 0755 "$ROOT_DIR/bootstrap.ps1" "$package_dir/bootstrap.ps1"
   install -m 0755 "$ROOT_DIR/scripts/generate-homebrew-formula.sh" "$package_dir/scripts/generate-homebrew-formula.sh"
+  install -m 0755 "$ROOT_DIR/scripts/generate-scoop-manifest.sh" "$package_dir/scripts/generate-scoop-manifest.sh"
+  install -m 0644 "$ROOT_DIR/bucket/colorbash.json" "$package_dir/bucket/colorbash.json"
   install -m 0644 "$ROOT_DIR/README.md" "$package_dir/README.md"
   install -m 0644 "$ROOT_DIR/LICENSE" "$package_dir/LICENSE"
   install -m 0644 "$ROOT_DIR/LICENSING.md" "$package_dir/LICENSING.md"
   install -m 0644 "$ROOT_DIR/VERSION" "$package_dir/VERSION"
 
-  tar -C "$temp_dir" -czf "$archive_path" "$package_name"
+  # COPYFILE_DISABLE=1 stops macOS bsdtar from embedding ._* AppleDouble files.
+  COPYFILE_DISABLE=1 tar -C "$temp_dir" -czf "$archive_path" "$package_name"
   cp "$archive_path" "$stable_archive_path"
   rm -rf "$temp_dir"
 
-  checksum="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+  if command -v shasum >/dev/null 2>&1; then
+    checksum="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+  elif command -v sha256sum >/dev/null 2>&1; then
+    checksum="$(sha256sum "$archive_path" | awk '{print $1}')"
+  else
+    die "Need shasum or sha256sum to compute the release checksum."
+  fi
 
   printf 'Created release archives:\n'
   printf '  %s\n' "$archive_path"

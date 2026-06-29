@@ -2,7 +2,7 @@
 
 `colorbash` lets you color one exact file or folder name differently in your terminal `ls` output.
 
-macOS `ls` only colors by file type, not by exact name, so this project solves that by:
+macOS and Linux `ls` only colors by file type, not by exact name, so this project solves that by:
 
 - saving exact file/folder-name color rules with `cb <name> <color>`
 - saving a random color per visible file/folder in the current directory with `cb random`
@@ -22,30 +22,60 @@ These images are simple mockups of the terminal output, so your exact font, spac
 
 ## Install
 
-### Homebrew
+colorbash runs natively on **macOS** and **Linux**, and on **Windows** through
+Git Bash or WSL (it's a bash tool, so it doesn't run in native PowerShell/cmd).
+Full per-OS details are in [CROSS-PLATFORM.md](CROSS-PLATFORM.md); the short
+version is below.
 
-After the release asset and tap repo are published, install with:
+### macOS / Linux — Homebrew
+
+One-time tap, then install like any other formula:
 
 ```bash
-brew install amm22-lab/colorbash/colorbash
-echo 'eval "$(colorbash init)"' >> ~/.zshrc
+brew tap amm22-lab/colorbash
+brew install colorbash
+echo 'eval "$(colorbash init)"' >> ~/.zshrc   # or ~/.bashrc on Linux
 source ~/.zshrc
 ```
 
-### One-line install without Homebrew
+You can also install in one command without adding the tap first:
 
-If someone does not use Homebrew, they can install the latest GitHub Release with:
+```bash
+brew install amm22-lab/colorbash/colorbash
+```
+
+### macOS / Linux — one-line install without Homebrew
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh | bash -s -- --configure-shell
 ```
 
-If they prefer not to pipe straight into `bash`, they can download the bootstrap script first:
+If you prefer not to pipe straight into `bash`, download it first:
 
 ```bash
 curl -fsSL -o colorbash-bootstrap.sh https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh
 bash colorbash-bootstrap.sh --configure-shell
 ```
+
+### Windows — Scoop (the `brew install` equivalent)
+
+```powershell
+scoop bucket add colorbash https://github.com/amm22-lab/colorBash
+scoop install colorbash
+```
+
+This pulls in Git Bash automatically and configures `~/.bashrc`. Then open
+**Git Bash** to use `cb` and `ls`.
+
+### Windows — PowerShell one-liner (no Scoop)
+
+```powershell
+irm https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.ps1 | iex
+```
+
+Finds Git Bash or WSL, downloads the latest release, and runs the installer. If
+no bash environment is present it tells you how to install one
+(`winget install --id Git.Git -e` or `wsl --install`).
 
 ### Fastest local install
 
@@ -180,9 +210,30 @@ Once you have a public GitHub repo and release tarball:
 ./scripts/generate-homebrew-formula.sh <github-owner> <repo> <version> <sha256>
 ```
 
-That writes [Formula/colorbash.rb](/Users/alexprof/Projects/colorBash/Formula/colorbash.rb), which you can place in your Homebrew tap repository.
+That writes [Formula/colorbash.rb](Formula/colorbash.rb), which you can place in your Homebrew tap repository.
 
-For the full GitHub release and Homebrew tap workflow, see [PUBLISHING.md](/Users/alexprof/Projects/colorBash/PUBLISHING.md).
+For the full GitHub release and Homebrew tap workflow, see [PUBLISHING.md](PUBLISHING.md).
+
+### Scoop (Windows)
+
+After the release tarball is published, generate the Scoop manifest with the same
+SHA256:
+
+```bash
+./scripts/generate-scoop-manifest.sh <github-owner> <repo> <version> <sha256>
+```
+
+That writes [bucket/colorbash.json](bucket/colorbash.json). This repository doubles
+as a Scoop bucket, so users can install with:
+
+```powershell
+scoop bucket add colorbash https://github.com/amm22-lab/colorBash
+scoop install colorbash
+```
+
+The manifest declares `git` as a dependency (which provides Git Bash) and wires
+up `~/.bashrc` on install. See [CROSS-PLATFORM.md](CROSS-PLATFORM.md) for the
+full Windows story, including the PowerShell one-line installer.
 
 ### No Homebrew
 
@@ -194,6 +245,6 @@ curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.
 
 ## License
 
-This project is available under the GNU Affero General Public License v3.0 in [LICENSE](/Users/alexprof/Projects/colorBash/LICENSE).
+This project is available under the GNU Affero General Public License v3.0 in [LICENSE](LICENSE).
 
-If you want to use `colorbash` without AGPLv3 obligations, a separate commercial license may be available from Alex Mutua. Contact: `alexmusyoki834@gmail.com`. See [LICENSING.md](/Users/alexprof/Projects/colorBash/LICENSING.md).
+If you want to use `colorbash` without AGPLv3 obligations, a separate commercial license may be available from Alex Mutua. Contact: `alexmusyoki834@gmail.com`. See [LICENSING.md](LICENSING.md).

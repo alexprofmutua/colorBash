@@ -6,16 +6,24 @@ This file describes the maintainer workflow for publishing new `colorbash` relea
 
 - Main repo: [amm22-lab/colorBash](https://github.com/amm22-lab/colorBash)
 - Homebrew tap: [amm22-lab/homebrew-colorbash](https://github.com/amm22-lab/homebrew-colorbash)
-- Current release line: `v0.1.3`
-- User install command:
+- Current release line: `v0.1.4`
+- User install command (macOS / Linux):
 
 ```bash
-brew install amm22-lab/colorbash/colorbash
+brew tap amm22-lab/colorbash
+brew install colorbash
 echo 'eval "$(colorbash init)"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-- No-Homebrew install command:
+- User install command (Windows, Scoop):
+
+```powershell
+scoop bucket add colorbash https://github.com/amm22-lab/colorBash
+scoop install colorbash
+```
+
+- No-Homebrew install command (macOS / Linux):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/amm22-lab/colorBash/main/bootstrap.sh | bash -s -- --configure-shell
@@ -73,18 +81,20 @@ dist/colorbash-v0.1.3.tar.gz
 dist/colorbash.tar.gz
 ```
 
-### 3. Regenerate the Homebrew formula
+### 3. Regenerate package definitions
 
 Use the SHA256 printed by the package script:
 
 ```bash
 ./scripts/generate-homebrew-formula.sh amm22-lab colorBash 0.1.3 <sha256>
+./scripts/generate-scoop-manifest.sh amm22-lab colorBash 0.1.3 <sha256>
 ```
 
 This updates:
 
 ```bash
 Formula/colorbash.rb
+bucket/colorbash.json
 ```
 
 The formula installs from the GitHub Release asset, not from the raw source archive:
@@ -157,9 +167,10 @@ For each new release:
 2. run `./scripts/package-release.sh`
 3. copy the printed SHA256
 4. run `./scripts/generate-homebrew-formula.sh amm22-lab colorBash <version> <sha256>`
-5. commit and push `main`
-6. tag `v<version>` and push the tag
-7. create the GitHub Release and upload both `dist/colorbash-v<version>.tar.gz` and `dist/colorbash.tar.gz`
-8. copy the updated formula into `homebrew-colorbash`
-9. commit and push the tap repo
-10. run `brew update` and `brew info amm22-lab/colorbash/colorbash`
+5. run `./scripts/generate-scoop-manifest.sh amm22-lab colorBash <version> <sha256>`
+6. commit and push `main` (includes `bucket/colorbash.json` for Scoop users)
+7. tag `v<version>` and push the tag
+8. create the GitHub Release and upload both `dist/colorbash-v<version>.tar.gz` and `dist/colorbash.tar.gz`
+9. copy the updated formula into `homebrew-colorbash`
+10. commit and push the tap repo
+11. run `brew update` and `brew info amm22-lab/colorbash/colorbash`

@@ -28,11 +28,17 @@ find_package_dir() {
 }
 
 main() {
-  local tmp_dir archive_path package_dir release_url
+  local tmp_dir archive_path package_dir release_url script_dir local_install
 
   if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     usage
     exit 0
+  fi
+
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local_install="$script_dir/install.sh"
+  if [ -f "$local_install" ] && [ -f "$script_dir/colorbash" ]; then
+    exec "$local_install" "$@"
   fi
 
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/colorbash-bootstrap.XXXXXX")"

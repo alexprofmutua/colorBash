@@ -41,7 +41,9 @@ resolve_default_shell_rc() {
       printf '%s/.zshrc\n' "$HOME"
       ;;
     bash)
-      if [ -f "$HOME/.bash_profile" ]; then
+      if [ -n "${MSYSTEM:-}" ] || [ "${OSTYPE:-}" = "msys" ]; then
+        printf '%s/.bashrc\n' "$HOME"
+      elif [ -f "$HOME/.bash_profile" ]; then
         printf '%s/.bash_profile\n' "$HOME"
       else
         printf '%s/.bashrc\n' "$HOME"
